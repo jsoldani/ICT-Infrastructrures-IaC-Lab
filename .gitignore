@@ -1,0 +1,7 @@
+.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/terraform.tfvars
+ansible/compose.yaml
+__pycache__/

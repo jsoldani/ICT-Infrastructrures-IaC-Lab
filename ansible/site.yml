@@ -1,0 +1,53 @@
+---
+- name: Configure and deploy the local web application
+  hosts: localhost
+  connection: ansible.builtin.local
+  gather_facts: false
+
+  vars:
+    project_dir: "{{ playbook_dir }}/.."
+    compose_file: "{{ playbook_dir }}/compose.yaml"
+    network_name: TODO_SET_TO_MATCH_TERRAFORM
+    app_message: TODO_SET_INITIAL_MESSAGE
+    app_image: ict-lab-api:1.0
+    host_port: 8080
+
+  tasks:
+    - name: Render the Compose application definition
+      ansible.builtin.template:
+        src: templates/compose.yaml.j2
+        dest: "{{ compose_file }}"
+        mode: "0644"
+      notify: Apply Compose application
+
+    - name: Flush handler before checking the service
+      ansible.builtin.meta: flush_handlers
+
+    - name: Check the web endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ host_port }}/"
+        return_content: true
+        status_code: 200
+      register: web_check
+      retries: 8
+      delay: 2
+      until: web_check.status == 200
+      when: not ansible_check_mode
+
+    - name: Show the response
+      ansible.builtin.debug:
+        msg: "HTTP {{ web_check.status }} — {{ web_check.content | trim }}"
+      when: not ansible_check_mode
+
+  handlers:
+    - name: Apply Compose application
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - -f
+          - "{{ compose_file }}"
+          - up
+          - -d
+          - --build
+      when: not ansible_check_mode
